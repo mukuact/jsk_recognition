@@ -1,5 +1,5 @@
 # BofHistgramExtractor
-![](images/bof_object_recognition.png)
+![](images/bof_histgram_extractor.png)
 
 make Bag of feature histgram from interest object's SIFT descripters
 
