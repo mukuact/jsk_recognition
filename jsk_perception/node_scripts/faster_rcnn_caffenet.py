@@ -59,18 +59,6 @@ def vis_detections(im, class_name, dets, thresh=0.5):
 
     return out
 
-
-def rects_msg_to_ndarray(rects_msg):
-    rects = np.zeros((len(rects_msg.rects), 4), dtype=np.float32)
-    for i, r in enumerate(rects_msg.rects):
-        xmin = r.x
-        ymin = r.y
-        xmax = r.x + r.width
-        ymax = r.y + r.height
-        rects[i] = [xmin, ymin, xmax, ymax]
-    return rects
-
-
 class FastRCNN(ConnectionBasedTransport):
 
     def __init__(self, net):
@@ -79,37 +67,21 @@ class FastRCNN(ConnectionBasedTransport):
         self._pub = self.advertise('~output', Image, queue_size=1)
 
     def subscribe(self):
-        import message_filters
-        self._sub = message_filters.Subscriber('~input', Image)
-        self._sub_rects = message_filters.Subscriber('~input/rect_array',
-                                                     RectArray)
-        use_async = rospy.get_param('~approximate_sync', False)
-        queue_size = rospy.get_param('~queue_size', 100)
-        subs = [self._sub, self._sub_rects]
-        if use_async:
-            slop = rospy.get_param('~slop', 0.1)
-            sync = message_filters.ApproximateTimeSynchronizer(
-                subs, queue_size, slop)
-        else:
-            sync = message_filters.TimeSynchronizer(subs, queue_size)
-        sync.registerCallback(self._detect)
+        self._sub = rospy.Subscriber('~input', Image, self._detect)
 
     def unsubscribe(self):
         self._sub.unregister()
         self._sub_rects.unregister()
 
-    def _detect(self, imgmsg, rects_msg):
+    def _detect(self, imgmsg):
         bridge = cv_bridge.CvBridge()
         im = bridge.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
-        rects = rects_msg_to_ndarray(rects_msg)
-        out_im = self._detect_obj(im, rects)
+        out_im = self._detect_obj(im)
         out_msg = bridge.cv2_to_imgmsg(out_im, encoding='bgr8')
         out_msg.header = imgmsg.header
         self._pub.publish(out_msg)
 
-    def _detect_obj(self, im, rects):
-        rospy.loginfo('{} object proposals'.format(len(rects)))
-
+    def _detect_obj(self, im):
         scores, boxes = im_detect(self.net, im)
 
         # Visualize detections for each class
