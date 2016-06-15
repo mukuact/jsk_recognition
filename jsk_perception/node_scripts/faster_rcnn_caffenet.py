@@ -98,8 +98,7 @@ class FastRCNN(ConnectionBasedTransport):
             im = vis_detections(im, cls, dets, thresh=CONF_THRESH)
         return im
 
-
-if __name__ == '__main__':
+def main():
     cfg.TEST.HAS_RPN = True
     prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc/ZF/faster_rcnn_alt_opt/faster_rcnn_test.pt')
     caffemodel = os.path.join(FRCN_ROOT,
@@ -109,3 +108,6 @@ if __name__ == '__main__':
     rospy.init_node('fast_rcnn_caffenet')
     fast_rcnn = FastRCNN(net=caffenet)
     rospy.spin()
+
+if __name__ == '__main__':
+    main()
