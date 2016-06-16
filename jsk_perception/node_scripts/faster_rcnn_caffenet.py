@@ -11,7 +11,7 @@ import cv_bridge
 from jsk_topic_tools import ConnectionBasedTransport
 import rospy
 from sensor_msgs.msg import Image
-from jsk_recognition_msgs.msg import RectArray
+from jsk_recognition_msgs.msg import Rect, RectArray, ClassificationResult
 
 
 if 'FRCN_ROOT' not in os.environ:
@@ -39,32 +39,35 @@ CLASSES = ('__background__',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
 
-
-def vis_detections(im, class_name, dets, thresh=0.5):
+    
+def vis_detections(class_ind, class_name, dets, thresh=0.5):
     """Draw detected bounding boxes."""
     inds = np.where(dets[:, -1] >= thresh)[0]
     if len(inds) == 0:
-        return im
-
-    out = im.copy()
-
+        return [],([],[],[])
+    out_rects = []
+    indies = []
+    names = []
+    scores = []
     for i in inds:
         bbox = dets[i, :4]
         score = dets[i, -1]
-        cv2.rectangle(out, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 0, 255))
-        text = '{:s} {:.3f}'.format(class_name, score)
-        cv2.putText(out, text,
-                    (int(bbox[0]), int(bbox[1]) - 2),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2)
+	out_rects.append(
+                Rect(x=bbox[0],y=bbox[1],
+                    width=(bbox[2]-bbox[0]),height=(bbox[3]-bbox[1])))
 
-    return out
+        indies.append(class_ind)
+        names.append(class_name)
+        scores.append(score)
+    return out_rects, (indies, names, scores)
 
 class FastRCNN(ConnectionBasedTransport):
 
     def __init__(self, net):
         super(FastRCNN, self).__init__()
         self.net = net
-        self._pub = self.advertise('~output', Image, queue_size=1)
+        self._pub_array = self.advertise('~rect_array', RectArray, queue_size=10)
+        self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
 
     def subscribe(self):
         self._sub = rospy.Subscriber('~input', Image, self._detect)
@@ -76,10 +79,21 @@ class FastRCNN(ConnectionBasedTransport):
     def _detect(self, imgmsg):
         bridge = cv_bridge.CvBridge()
         im = bridge.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
-        out_im = self._detect_obj(im)
-        out_msg = bridge.cv2_to_imgmsg(out_im, encoding='bgr8')
-        out_msg.header = imgmsg.header
-        self._pub.publish(out_msg)
+        out_rects, out_values = self._detect_obj(im)
+        # publish array
+        ros_rect_array = RectArray()
+        ros_rect_array.header = imgmsg.header 
+        ros_rect_array.rects = out_rects
+        self._pub_array.publish(ros_rect_array)
+        # publish values
+        cls_msg = ClassificationResult(
+                header = imgmsg.header,
+                labels = out_values[0],
+                label_names = out_values[1],
+                label_proba = out_values[2]
+                )
+        self._pub_value.publish(cls_msg)
+
 
     def _detect_obj(self, im):
         scores, boxes = im_detect(self.net, im)
@@ -87,6 +101,8 @@ class FastRCNN(ConnectionBasedTransport):
         # Visualize detections for each class
         CONF_THRESH = 0.8
         NMS_THRESH = 0.3
+	rects_list = []
+        value_list = [list(),list(),list()]
         for cls_ind, cls in enumerate(CLASSES[1:]):
             cls_ind += 1 # because we skipped background
             cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
@@ -95,8 +111,11 @@ class FastRCNN(ConnectionBasedTransport):
                               cls_scores[:, np.newaxis])).astype(np.float32)
             keep = nms(dets, NMS_THRESH)
             dets = dets[keep, :]
-            im = vis_detections(im, cls, dets, thresh=CONF_THRESH)
-        return im
+            rects,values = vis_detections(cls_ind, cls, dets, thresh=CONF_THRESH) 
+            rects_list.extend(rects)
+            for i, value in enumerate(value_list):
+                value.extend(values[i])
+        return rects_list,value_list
 
 def main():
     cfg.TEST.HAS_RPN = True
