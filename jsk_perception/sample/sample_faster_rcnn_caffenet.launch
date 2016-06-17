@@ -8,10 +8,13 @@
     </rosparam>
   </node>
 
-  <include file="$(find jsk_perception)/launch/faster_rcnn_caffenet.launch">
-    <arg name="INPUT_IMAGE" value="image_publisher/output" />
-  </include>
-
+  <node name="fast_rcnn"
+        pkg="jsk_perception" type="faster_rcnn_caffenet.py">
+    <remap from="~input" to="image_publisher/output" />
+    <rosparam>
+      model: vgg_cnn_m_1024
+    </rosparam>
+  </node>
 
   <node name="draw_rect_array"
         pkg="jsk_perception" type="draw_rect_array.py">
