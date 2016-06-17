@@ -66,8 +66,10 @@ class FastRCNN(ConnectionBasedTransport):
     def __init__(self, net):
         super(FastRCNN, self).__init__()
         self.net = net
+        self.gpu = rospy.get_param('~gpu', -1)
         self._pub_array = self.advertise('~rect_array', RectArray, queue_size=10)
         self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
+        self._set_caffe()
 
     def subscribe(self):
         self._sub = rospy.Subscriber('~input', Image, self._detect)
@@ -116,6 +118,9 @@ class FastRCNN(ConnectionBasedTransport):
             for i, value in enumerate(value_list):
                 value.extend(values[i])
         return rects_list,value_list
+
+    def _set_caffe():
+        pass
 
 def main():
     cfg.TEST.HAS_RPN = True
