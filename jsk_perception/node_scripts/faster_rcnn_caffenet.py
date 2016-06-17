@@ -117,6 +117,7 @@ class FastRCNN(ConnectionBasedTransport):
                 value.extend(values[i])
         return rects_list,value_list
 
+
 def main():
     cfg.TEST.HAS_RPN = True
     prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc/ZF/faster_rcnn_alt_opt/faster_rcnn_test.pt')
