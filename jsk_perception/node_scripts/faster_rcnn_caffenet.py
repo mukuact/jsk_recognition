@@ -119,7 +119,7 @@ class FastRCNN(ConnectionBasedTransport):
                 value.extend(values[i])
         return rects_list,value_list
 
-    def _set_caffe():
+    def _set_caffe(self):
         pass
 
 def main():
