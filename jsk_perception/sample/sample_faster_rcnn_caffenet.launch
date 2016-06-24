@@ -8,7 +8,7 @@
     </rosparam>
   </node>
 
-  <node name="fast_rcnn"
+  <node name="faster_rcnn"
         pkg="jsk_perception" type="faster_rcnn_caffenet.py">
     <remap from="~input" to="image_publisher/output" />
     <rosparam>
@@ -19,7 +19,7 @@
   <node name="draw_rect_array"
         pkg="jsk_perception" type="draw_rect_array.py">
     <remap from="~input" to="image_publisher/output" />
-    <remap from="~input/rect_array" to="fast_rcnn/rect_array" />
+    <remap from="~input/rect_array" to="faster_rcnn/rect_array" />
   </node>
 
   <node name="image_view"
