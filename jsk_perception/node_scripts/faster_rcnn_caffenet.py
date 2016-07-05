@@ -3,7 +3,7 @@
 
 import os
 import sys
-
+import time
 import cv2
 import numpy as np
 
@@ -29,8 +29,6 @@ from fast_rcnn.nms_wrapper import nms
 from fast_rcnn.config import cfg
 
 
-caffe.set_mode_gpu()
-caffe.set_device(0)
 
 CLASSES = ('__background__',
            'aeroplane', 'bicycle', 'bird', 'boat',
@@ -66,22 +64,31 @@ class FastRCNN(ConnectionBasedTransport):
     def __init__(self, net):
         super(FastRCNN, self).__init__()
         self.net = net
+        caffe.set_mode_gpu()
+        caffe.set_device(0)
         self.gpu = rospy.get_param('~gpu', -1)
-        self._pub_array = self.advertise('~rect_array', RectArray, queue_size=10)
+        self._pub_array = self.advertise('~rect_array', RectArray, queue_size=1)
         self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
         self._set_caffe()
 
     def subscribe(self):
-        self._sub = rospy.Subscriber('~input', Image, self._detect)
+        #self._sub = message_filters.Subscriber('~input', Image)
+
+        self._sub = rospy.Subscriber('~input', Image, self._detect, queue_size = 1, buff_size=2*24)
 
     def unsubscribe(self):
         self._sub.unregister()
-        self._sub_rects.unregister()
 
     def _detect(self, imgmsg):
         bridge = cv_bridge.CvBridge()
         im = bridge.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
+
+        # detect object
+        start = time.time()
         out_rects, out_values = self._detect_obj(im)
+        elapsed_time = time.time() - start
+        rospy.loginfo("detection time is %f sec",elapsed_time) 
+
         # publish array
         ros_rect_array = RectArray()
         ros_rect_array.header = imgmsg.header 
@@ -129,7 +136,7 @@ def main():
         'data/faster_rcnn_models/ZF_faster_rcnn_final.caffemodel')
     caffenet = caffe.Net(prototxt, caffemodel, caffe.TEST)
 
-    rospy.init_node('fast_rcnn_caffenet')
+    rospy.init_node('fast_rcnn_caffenet',log_level=rospy.DEBUG)
     fast_rcnn = FastRCNN(net=caffenet)
     rospy.spin()
 
