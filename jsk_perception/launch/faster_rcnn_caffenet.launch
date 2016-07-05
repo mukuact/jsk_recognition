@@ -18,12 +18,11 @@
 
   <node name="draw_rect_array"
         pkg="jsk_perception" type="draw_rect_array.py">
-    <remap from="~input" to="/camera/rgb/image_rect_color" />
+    <remap from="~input" to="$(arg INPUT)" />
     <remap from="~input/rect_array" to="fast_rcnn/rect_array" />
     <rosparam>
       approximate_sync: True
-      queue_size: 1
-      slop: 5
+      slop: 10
     </rosparam>
   </node>
 
