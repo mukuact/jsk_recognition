@@ -87,7 +87,10 @@ class FastRCNN(ConnectionBasedTransport):
         start = time.time()
         out_rects, out_values = self._detect_obj(im)
         elapsed_time = time.time() - start
-        rospy.loginfo("detection time is %f sec",elapsed_time) 
+        rospy.logdebug("detection time is %f sec",elapsed_time) 
+
+        spent = rospy.get_rostime().secs - imgmsg.header.stamp.secs
+        rospy.logdebug("time delay is %f sec", spent)
 
         # publish array
         ros_rect_array = RectArray()
@@ -136,7 +139,7 @@ def main():
         'data/faster_rcnn_models/ZF_faster_rcnn_final.caffemodel')
     caffenet = caffe.Net(prototxt, caffemodel, caffe.TEST)
 
-    rospy.init_node('fast_rcnn_caffenet',log_level=rospy.DEBUG)
+    rospy.init_node('fast_rcnn_caffenet', log_level=rospy.DEBUG)
     fast_rcnn = FastRCNN(net=caffenet)
     rospy.spin()
 
