@@ -6,12 +6,14 @@ import sys
 import time
 import cv2
 import numpy as np
+import pdb
 
 import cv_bridge
 from jsk_topic_tools import ConnectionBasedTransport
 import rospy
 from sensor_msgs.msg import Image
 from jsk_recognition_msgs.msg import Rect, RectArray, ClassificationResult
+import message_filters
 
 
 if 'FRCN_ROOT' not in os.environ:
@@ -19,10 +21,10 @@ if 'FRCN_ROOT' not in os.environ:
     sys.exit(1)
 
 FRCN_ROOT = os.environ['FRCN_ROOT']
+
 sys.path.insert(0, os.path.join(FRCN_ROOT, 'caffe-fast-rcnn/python'))
 sys.path.insert(0, os.path.join(FRCN_ROOT, 'lib'))
 
-print(sys.path)
 import caffe
 from fast_rcnn.test import im_detect
 from fast_rcnn.nms_wrapper import nms
@@ -61,20 +63,15 @@ def vis_detections(class_ind, class_name, dets, thresh=0.5):
 
 class FastRCNN(ConnectionBasedTransport):
 
-    def __init__(self, net):
+    def __init__(self):
         super(FastRCNN, self).__init__()
-        self.net = net
-        caffe.set_mode_gpu()
-        caffe.set_device(0)
-        self.gpu = rospy.get_param('~gpu', -1)
+        self._setting_caffe()
         self._pub_array = self.advertise('~rect_array', RectArray, queue_size=1)
         self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
-        self._set_caffe()
 
     def subscribe(self):
-        #self._sub = message_filters.Subscriber('~input', Image)
-
-        self._sub = rospy.Subscriber('~input', Image, self._detect, queue_size = 1, buff_size=2*24)
+        sub = message_filters.Subscriber('~input', Image)
+        sub.registerCallback(self._detect)
 
     def unsubscribe(self):
         self._sub.unregister()
@@ -84,13 +81,10 @@ class FastRCNN(ConnectionBasedTransport):
         im = bridge.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
 
         # detect object
-        start = time.time()
+        tic = time.clock()
         out_rects, out_values = self._detect_obj(im)
-        elapsed_time = time.time() - start
-        rospy.logdebug("detection time is %f sec",elapsed_time) 
-
-        spent = rospy.get_rostime().secs - imgmsg.header.stamp.secs
-        rospy.logdebug("time delay is %f sec", spent)
+        toc = time.clock()
+        rospy.logdebug("detection time is %f sec",toc - tic)
 
         # publish array
         ros_rect_array = RectArray()
@@ -108,6 +102,8 @@ class FastRCNN(ConnectionBasedTransport):
 
 
     def _detect_obj(self, im):
+        
+        caffe.set_mode_gpu()
         scores, boxes = im_detect(self.net, im)
 
         # Visualize detections for each class
@@ -129,19 +125,32 @@ class FastRCNN(ConnectionBasedTransport):
                 value.extend(values[i])
         return rects_list,value_list
 
-    def _set_caffe(self):
-        pass
+
+    def _setting_caffe(self):
+        cfg.TEST.HAS_RPN = True
+
+        prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc/ZF/faster_rcnn_alt_opt/faster_rcnn_test.pt')
+        caffemodel = os.path.join(FRCN_ROOT,
+            'data/faster_rcnn_models/ZF_faster_rcnn_final.caffemodel')
+        self.net = caffe.Net(prototxt, caffemodel, caffe.TEST)
+        rospy.loginfo('Loaded network {:s}'.format(caffemodel))
+
+        # Warmup on a dummy image
+        im = 128 * np.ones((480,640, 3), dtype=np.uint8)
+        for i in xrange(2):
+            _, _= im_detect(self.net, im)
+
 
 def main():
-    cfg.TEST.HAS_RPN = True
-    prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc/ZF/faster_rcnn_alt_opt/faster_rcnn_test.pt')
-    caffemodel = os.path.join(FRCN_ROOT,
-        'data/faster_rcnn_models/ZF_faster_rcnn_final.caffemodel')
-    caffenet = caffe.Net(prototxt, caffemodel, caffe.TEST)
-
     rospy.init_node('fast_rcnn_caffenet', log_level=rospy.DEBUG)
-    fast_rcnn = FastRCNN(net=caffenet)
+    fast_rcnn = FastRCNN()
     rospy.spin()
 
 if __name__ == '__main__':
+    
+    if rospy.get_param('~cpu_mode',False):
+        caffe.set_mode_cpu()
+    else:
+        caffe.set_mode_gpu()
+        caffe.set_device(0)
     main()
