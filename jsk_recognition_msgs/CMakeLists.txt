@@ -35,8 +35,6 @@ add_message_files(
   PosedCameraInfo.msg
   RectArray.msg
   Rect.msg
-  RectWithValue.msg
-  RectWithValueArray.msg
   RotatedRect.msg
   RotatedRectStamped.msg
   SimpleHandle.msg
