@@ -65,12 +65,14 @@ class FastRCNN(ConnectionBasedTransport):
 
     def __init__(self):
         super(FastRCNN, self).__init__()
-        self._setting_caffe()
+        self.gpu = rospy.get_param('~cpu_mode', False)
+        net = rospy.get_param('~net', 'zf')
+        self._setting_caffe(net)
         self._pub_array = self.advertise('~rect_array', RectArray, queue_size=1)
         self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
 
     def subscribe(self):
-        sub = message_filters.Subscriber('~input', Image)
+        sub = message_filters.Subscriber('~input', Image, queue_size=1)
         sub.registerCallback(self._detect)
 
     def unsubscribe(self):
@@ -103,7 +105,10 @@ class FastRCNN(ConnectionBasedTransport):
 
     def _detect_obj(self, im):
         
-        caffe.set_mode_gpu()
+        if rospy.get_param('~cpu_mode',False):
+            caffe.set_mode_cpu()
+        else:
+            caffe.set_mode_gpu()
         scores, boxes = im_detect(self.net, im)
 
         # Visualize detections for each class
@@ -126,12 +131,18 @@ class FastRCNN(ConnectionBasedTransport):
         return rects_list,value_list
 
 
-    def _setting_caffe(self):
+    def _setting_caffe(self, net):
         cfg.TEST.HAS_RPN = True
+        NETS = {'vgg16': ('VGG16',
+                  'VGG16_faster_rcnn_final.caffemodel'),
+                'zf': ('ZF',
+                  'ZF_faster_rcnn_final.caffemodel')}
 
-        prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc/ZF/faster_rcnn_alt_opt/faster_rcnn_test.pt')
-        caffemodel = os.path.join(FRCN_ROOT,
-            'data/faster_rcnn_models/ZF_faster_rcnn_final.caffemodel')
+        prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc', NETS[net][0],
+                'faster_rcnn_alt_opt','faster_rcnn_test.pt')
+        caffemodel = os.path.join(FRCN_ROOT, 'data/faster_rcnn_models', NETS[net][1])
+
+        # constract deep network in memory
         self.net = caffe.Net(prototxt, caffemodel, caffe.TEST)
         rospy.loginfo('Loaded network {:s}'.format(caffemodel))
 
@@ -142,15 +153,10 @@ class FastRCNN(ConnectionBasedTransport):
 
 
 def main():
-    rospy.init_node('fast_rcnn_caffenet', log_level=rospy.DEBUG)
+    rospy.init_node('faster_rcnn_caffenet', log_level=rospy.DEBUG)
     fast_rcnn = FastRCNN()
     rospy.spin()
 
 if __name__ == '__main__':
     
-    if rospy.get_param('~cpu_mode',False):
-        caffe.set_mode_cpu()
-    else:
-        caffe.set_mode_gpu()
-        caffe.set_device(0)
     main()
