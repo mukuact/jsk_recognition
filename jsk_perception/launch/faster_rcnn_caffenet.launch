@@ -12,7 +12,7 @@
         pkg="jsk_perception" type="faster_rcnn_caffenet.py" output="screen"> 
     <remap from="~input" to="$(arg INPUT)" />
     <rosparam>
-      model: vgg_cnn_m_1024
+      net: vgg16
     </rosparam>
   </node>
 
