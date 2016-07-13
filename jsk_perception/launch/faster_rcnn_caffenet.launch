@@ -1,6 +1,7 @@
 <launch>
   <arg name="INPUT" default="/camera/rgb/image_rect_color" />
   <arg name="INPUT_ON" default="false" />
+  <arg name="NET" default="zf" />
 
   <group unless="$(arg INPUT_ON)">
     <include file="$(find openni2_launch)/launch/openni2.launch">
@@ -8,18 +9,16 @@
   </group>
 
 
-  <node name="fast_rcnn"
+  <node name="faster_rcnn"
         pkg="jsk_perception" type="faster_rcnn_caffenet.py" output="screen"> 
     <remap from="~input" to="$(arg INPUT)" />
-    <rosparam>
-      net: vgg16
-    </rosparam>
+    <param name="net" value="$(arg NET)" />
   </node>
 
   <node name="draw_rect_array"
         pkg="jsk_perception" type="draw_rect_array.py">
     <remap from="~input" to="$(arg INPUT)" />
-    <remap from="~input/rect_array" to="fast_rcnn/rect_array" />
+    <remap from="~input/rect_array" to="faster_rcnn/rect_array" />
     <rosparam>
       approximate_sync: True
       slop: 10
