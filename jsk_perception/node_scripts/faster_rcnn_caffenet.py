@@ -72,7 +72,7 @@ class FastRCNN(ConnectionBasedTransport):
         self._pub_value = self.advertise('~output', ClassificationResult, queue_size=1)
 
     def subscribe(self):
-        sub = message_filters.Subscriber('~input', Image, queue_size=1)
+        sub = message_filters.Subscriber('~input', Image, queue_size=1, buff_size=2**25)
         sub.registerCallback(self._detect)
 
     def unsubscribe(self):
@@ -133,14 +133,16 @@ class FastRCNN(ConnectionBasedTransport):
 
     def _setting_caffe(self, net):
         cfg.TEST.HAS_RPN = True
-        NETS = {'vgg16': ('VGG16',
-                  'VGG16_faster_rcnn_final.caffemodel'),
-                'zf': ('ZF',
-                  'ZF_faster_rcnn_final.caffemodel')}
+        NETS = {'vgg16': (os.path.join(FRCN_ROOT, 'models', 'pascal_voc','VGG16','faster_rcnn_alt_opt','faster_rcnn_test.pt'),
+                  os.path.join(FRCN_ROOT, 'data','faster_rcnn_models','VGG16_faster_rcnn_final.caffemodel')),
+                'zf': (os.path.join(FRCN_ROOT, 'models', 'pascal_voc','ZF','faster_rcnn_alt_opt','faster_rcnn_test.pt'),
+                  os.path.join(FRCN_ROOT, 'data','faster_rcnn_models','ZF_faster_rcnn_final.caffemodel')),
+                'imagenet': (os.path.join(FRCN_ROOT, 'models', 'pascal_voc', 'VGG16', 'faster_rcnn_end2end', 'test.prototxt'),
+                  os.path.join(FRCN_ROOT, 'data', 'imagenet_models', 'VGG16.v2.caffemodel')) 
+                  }
 
-        prototxt = os.path.join(FRCN_ROOT, 'models/pascal_voc', NETS[net][0],
-                'faster_rcnn_alt_opt','faster_rcnn_test.pt')
-        caffemodel = os.path.join(FRCN_ROOT, 'data/faster_rcnn_models', NETS[net][1])
+        prototxt = NETS[net][0]
+        caffemodel = NETS[net][1]
 
         # constract deep network in memory
         self.net = caffe.Net(prototxt, caffemodel, caffe.TEST)
