@@ -1,0 +1,21 @@
+<launch>
+    <node name="rosbag_play"
+        pkg="rosbag" type="play"
+        args="$(env HOME)/playground/2016-04-21-14-13-30.bag --loop" />
+
+    <include file="$(find learning_tf)/launch/myLaunch.launch" />
+
+    <include file="$(find jsk_perception)/launch/faster_rcnn_caffenet.launch">
+        <arg name="INPUT_ON" value="true"/>
+        <arg name="INPUT" value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
+    </include>
+
+    <!--
+    <node name="recognized_tf_publisher"
+        pkg="jsk_perception" type="tf_publisher_from_recognition.py" output="screen">
+        <remap from="~input/camera_info" to="/hsrb/head_rgbd_sensor/rgb/camera_info"/>
+        <remap from="~input/rect_array" to="/faster_rcnn/rect_array"/>
+        <remap from="~input/recognition" to="/faster_rcnn/output"/>
+    </node>
+    -->
+</launch>
