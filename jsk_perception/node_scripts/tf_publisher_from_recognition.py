@@ -3,13 +3,14 @@
 import rospy
 import message_filters
 import tf
+import numpy as np
 import cv2
 import cv_bridge
 
 from image_geometry import PinholeCameraModel
 from jsk_topic_tools import ConnectionBasedTransport
 from jsk_recognition_msgs.msg import RectArray, Rect, ClassificationResult
-from sensor_msgs.msg import CameraInfo
+from sensor_msgs.msg import CameraInfo, Image
 import pdb
 
 class RecognisedTfPublisher(ConnectionBasedTransport):
@@ -20,11 +21,13 @@ class RecognisedTfPublisher(ConnectionBasedTransport):
         self.br = tf.TransformBroadcaster()
 
     def subscribe(self):
-        self.sub_ = message_filters.Subscriber('~input/camera_info', CameraInfo)
+        self.sub_cam_info = message_filters.Subscriber('~input/camera_info', CameraInfo)
         self.sub_rects = message_filters.Subscriber('~input/rect_array', RectArray)
+        self.sub_depth = message_filters.Subscriber('~input/depth', Image)
+        self.sub_recognition = message_filters.Subscriber('~input/recog', ClassificationResult)
         queue_size = rospy.get_param('~queue_size', 3)
         slop = rospy.get_param('~slop', 10)
-        subs = [self.sub_,self.sub_rects]
+        subs = [self.sub_cam_info, self.sub_rects, self.sub_depth, self.sub_recognition]
 
         sync = message_filters.ApproximateTimeSynchronizer(
                 subs, queue_size, slop)
@@ -35,7 +38,10 @@ class RecognisedTfPublisher(ConnectionBasedTransport):
         self.sub_.unregister()
         self.sub_rects.unregister()
 
-    def _apply(self, camera_info, rect_array):
+    def _apply(self, camera_info, rect_array, dep_imgmsg, recog):
+        # getting depth image
+        bridge = cv_bridge.CvBridge()
+        dep_im = bridge.imgmsg_to_cv2(dep_imgmsg)
         # setting camera
         self.cam_model.fromCameraInfo(camera_info)
         # get center of array
@@ -44,15 +50,20 @@ class RecognisedTfPublisher(ConnectionBasedTransport):
             uv = ( rect.x + rect.width / 2 ,
                     rect.y + rect.height /2 )
             uv_list.append(uv)
-
-        point3d = self.cam_model.projectPixelTo3dRay(uv_list[0])
-
-        rospy.logdebug(point3d)
-        self.br.sendTransform(point3d,
-                tf.transformations.quaternion_from_euler(0,0,0),
-                camera_info.header.stamp,
-                "bottle", #this tf
-                self.cam_model.tfFrame()) #parent tf 
+        
+        for each_uv, label in zip(uv_list, recog.label_names):
+            # convert center point to 3d normal vector via camera_info   
+            point3d = np.array(self.cam_model.projectPixelTo3dRay(each_uv))
+            # get depth from depth image which is effector of 3d point 
+            depth = dep_im[each_uv[::-1]]
+            if not depth != depth :  # except NaN 
+                point3d = depth * point3d
+                # publish tf
+                self.br.sendTransform(point3d,
+                        tf.transformations.quaternion_from_euler(0,0,0),
+                        camera_info.header.stamp,
+                        label, #this tf
+                        self.cam_model.tfFrame()) #parent tf 
 
                 
 
