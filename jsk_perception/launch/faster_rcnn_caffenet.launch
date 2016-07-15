@@ -10,7 +10,7 @@
 
 
   <node name="faster_rcnn"
-        pkg="jsk_perception" type="faster_rcnn_caffenet.py" output="screen"> 
+        pkg="jsk_perception" type="faster_rcnn_caffenet.py" > 
     <remap from="~input" to="$(arg INPUT)" />
     <param name="net" value="$(arg NET)" />
   </node>
