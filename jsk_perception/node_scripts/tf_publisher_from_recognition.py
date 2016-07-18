@@ -16,9 +16,10 @@ import pdb
 class RecognisedTfPublisher(ConnectionBasedTransport):
     def __init__(self):
         super(RecognisedTfPublisher, self).__init__()
-        self.pub_ = self.advertise('~output/camera_info', CameraInfo, queue_size=10)
+        rospy.set_param('~always_subscribe', True)
         self.cam_model = PinholeCameraModel()
         self.br = tf.TransformBroadcaster()
+
 
     def subscribe(self):
         self.sub_cam_info = message_filters.Subscriber('~input/camera_info', CameraInfo)
@@ -35,8 +36,10 @@ class RecognisedTfPublisher(ConnectionBasedTransport):
 
 
     def unsubscribe(self):
-        self.sub_.unregister()
+        self.sub_cam_info.unregister()
         self.sub_rects.unregister()
+        self.sub_depth.unregister()
+        self.sub_recognition.unregister()
 
     def _apply(self, camera_info, rect_array, dep_imgmsg, recog):
         # getting depth image
