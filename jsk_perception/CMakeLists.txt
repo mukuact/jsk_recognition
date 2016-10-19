@@ -136,7 +136,7 @@ catkin_package(
   std_msgs
   DEPENDS
   INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME} oriented_gradient
+  LIBRARIES ${PROJECT_NAME} 
 )
 
 
@@ -264,13 +264,13 @@ add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_gencpp)
 macro(jsk_add_node _node_cpp _node_exec_name)
   cmake_parse_arguments(ARG "" "" "DEPENDS;LIBRARIES" ${ARGN})
   add_executable(${_node_exec_name} ${_node_cpp})
-  target_link_libraries(${_node_exec_name} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${ARG_LIBRARIES})
+  target_link_libraries(${_node_exec_name} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${ARG_LIBRARIES} ${OpenCV_LIBRARIES}) 
   add_dependencies(${_node_exec_name} ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_gencpp ${ARG_DEPENDS})
   list(APPEND ${PROJECT_NAME}_node_executables ${_node_exec_name})
 endmacro()
 
-add_library(oriented_gradient src/oriented_gradient.cpp)
-target_link_libraries(oriented_gradient ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_library(oriented_gradient src/oriented_gradient.cpp)
+#target_link_libraries(oriented_gradient ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 jsk_add_node(src/camshiftdemo.cpp camshiftdemo)
 jsk_add_node(src/linemod.cpp linemod)
@@ -280,8 +280,8 @@ jsk_add_node(src/white_balance_converter.cpp white_balance_converter)
 jsk_add_node(src/rectangle_detector.cpp rectangle_detector)
 jsk_add_node(src/calc_flow.cpp calc_flow)
 jsk_add_node(src/color_histogram_sliding_matcher.cpp color_histogram_sliding_matcher)
-jsk_add_node(src/oriented_gradient_node.cpp oriented_gradient_node
-             DEPENDS oriented_gradient LIBRARIES oriented_gradient)
+#jsk_add_node(src/oriented_gradient_node.cpp oriented_gradient_node
+#DEPENDS oriented_gradient LIBRARIES oriented_gradient)
 jsk_add_node(src/sliding_window_object_detector_trainer_node.cpp sliding_window_object_detector_trainer_node
              DEPENDS ${PROJECT_NAME} LIBRARIES ${PROJECT_NAME})
 
@@ -306,18 +306,18 @@ add_custom_target(eusmodel_template ALL DEPENDS
 # Install
 # ------------------------------------------------------------------------------------
 
-install(TARGETS
-  # Libraries
-  ${PROJECT_NAME}
-  oriented_gradient
-  # Node executables
-  ${${PROJECT_NAME}_node_executables}
-  # Nodelet executables
-  ${${PROJECT_NAME}_nodelet_executables}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+#install(TARGETS
+#  # Libraries
+#  ${PROJECT_NAME}
+#  oriented_gradient
+#  # Node executables
+#  ${${PROJECT_NAME}_node_executables}
+#  # Nodelet executables
+#  ${${PROJECT_NAME}_nodelet_executables}
+#  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 install(DIRECTORY node_scripts/ scripts/
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
         USE_SOURCE_PERMISSIONS
