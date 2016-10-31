@@ -224,6 +224,7 @@ jsk_add_nodelet(src/gaussian_blur.cpp "jsk_perception/GaussianBlur" "gaussian_bl
 jsk_add_nodelet(src/kmeans.cpp "jsk_perception/KMeans" "kmeans")
 if("${OpenCV_VERSION}" VERSION_GREATER "2.9.9")  # >= 3.0.0
   jsk_add_nodelet(src/bing.cpp "jsk_perception/Bing" "bing")
+  jsk_add_nodelet(src/detection_stabilizer.cpp "jsk_perception/DetectionStabilizer" "detection_stabilizer")
 endif()
 jsk_add_nodelet(src/tabletop_color_difference_likelihood.cpp "jsk_perception/TabletopColorDifferenceLikelihood" "tabletop_color_difference_likelihood")
 if(OPENMP_FOUND)
