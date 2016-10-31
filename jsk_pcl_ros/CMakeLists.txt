@@ -49,6 +49,9 @@ IF(${yaml_cpp_VERSION} VERSION_LESS "0.5.0")
   add_definitions("-DUSE_OLD_YAML")
 ENDIF()
 
+message(WARNING "DEPRECATION WARNING: srv files in jsk_pcl_ros are deprecated."
+        " Please use those in jsk_recognition_msgs.")
+# TODO(wkentaro): Remove deprecated srv files.
 add_service_files(FILES SwitchTopic.srv
   UpdateOffset.srv
   SnapFootstep.srv
@@ -454,11 +457,11 @@ install(DIRECTORY scripts/
         USE_SOURCE_PERMISSIONS
 )
 
-install(FILES jsk_pcl_nodelets.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY
   config
   launch
   sample
+  plugins
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 if (CATKIN_ENABLE_TESTING)
@@ -484,6 +487,7 @@ if (CATKIN_ENABLE_TESTING)
     add_rostest(test/test_pointcloud_database_server.test DEPENDENCIES install_test_data)
     add_rostest(test/test_convex_connected_voxels.test DEPENDENCIES install_test_data)
     add_rostest(test/test_organized_pointcloud_to_point_indices.test DEPENDENCIES install_test_data)
+    add_rostest(test/test_rearrange_bounding_box.test)
     add_rostest(test/test_color_based_region_growing_segmentation.test DEPENDENCIES install_test_data)
   endif()
   roslaunch_add_file_check(launch/openni_local.launch)
