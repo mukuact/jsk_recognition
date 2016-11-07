@@ -39,6 +39,8 @@
 
 #include <jsk_topic_tools/diagnostic_nodelet.h>
 #include <sensor_msgs/Image.h>
+#include <jsk_recognition_msgs/RectArray.h>
+#include <jsk_recognition_msgs/ClassificationResult.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
@@ -51,10 +53,12 @@ namespace jsk_perception
   public:
     typedef message_filters::sync_policies::ApproximateTime<
     sensor_msgs::Image,
-    sensor_msgs::Image > ApproximateSyncPolicy;
+    jsk_recognition_msgs::RectArray,
+    jsk_recognition_msgs::ClassificationResult > ApproximateSyncPolicy;
     typedef message_filters::sync_policies::ExactTime<
     sensor_msgs::Image,
-    sensor_msgs::Image > SyncPolicy;
+    jsk_recognition_msgs::RectArray,
+    jsk_recognition_msgs::ClassificationResult >SyncPolicy;
     DetectionStabilizer(): DiagnosticNodelet("DetectionStabilizer") {}
   protected:
 
@@ -63,16 +67,16 @@ namespace jsk_perception
     virtual void unsubscribe();
     virtual void apply(
       const sensor_msgs::Image::ConstPtr& image_msg,
-      const sensor_msgs::Image::ConstPtr& mask_msg);
+      const jsk_recognition_msgs::RectArray::ConstPtr& rects_msg,
+      const jsk_recognition_msgs::ClassificationResult::ConstPtr& classificaiton);
 
     bool approximate_sync_;
-    bool clip_;
-    bool mask_black_to_transparent_;
     int queue_size_;
     boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
     boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > async_;
     message_filters::Subscriber<sensor_msgs::Image> sub_image_;
-    message_filters::Subscriber<sensor_msgs::Image> sub_mask_;
+    message_filters::Subscriber<jsk_recognition_msgs::RectArray> sub_rects_;
+    message_filters::Subscriber<jsk_recognition_msgs::ClassificationResult> sub_classification_;
     ros::Publisher pub_image_;
     ros::Publisher pub_mask_;
     
