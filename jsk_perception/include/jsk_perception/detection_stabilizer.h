@@ -37,6 +37,8 @@
 #ifndef JSK_PERCEPTION_APPLY_MASK_IMAGE_H_
 #define JSK_PERCEPTION_APPLY_MASK_IMAGE_H_
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/tracking/tracker.hpp>
 #include <jsk_topic_tools/diagnostic_nodelet.h>
 #include <sensor_msgs/Image.h>
 #include <jsk_recognition_msgs/RectArray.h>
@@ -48,6 +50,36 @@
 
 namespace jsk_perception
 {
+  class MyTracker {
+  private:
+      static int next_id;
+      int id;
+      std::string obj_class;
+      int n_miss_frame;
+      cv::Rect2d rect;
+      cv::Ptr<cv::Tracker> cv_tracker;
+
+      int MAX_MISS_FRAME;
+      double MIN_NEW_DETECT_INTERSECTION_RATE;
+      cv::Size MAX_DETECT_SIZE;
+  public:
+      // フレーム画像と追跡対象(Rect)で初期化
+      MyTracker(const cv::Mat& _frame, const cv::Rect2d& _rect, const std::string&, const int, const double, const cv::Size) ;
+      // 次フレームを入力にして、追跡対象の追跡(true)
+      // MAX_MISS_FRAME以上検出が登録されていない場合は追跡失敗(false)
+      bool update(const cv::Mat& _frame);
+      // 新しい検出(Rect)を登録。
+      // 現在位置と近ければ受理してn_miss_frameをリセット(true)
+      // そうでなければ(false)
+      bool registerNewDetect(const cv::Rect2d& _new_detect, const std::string&);
+      // trackerの現在地を_imageに書き込む
+      void draw(cv::Mat& _image) const;
+
+      static void convertJSKRectArrayToCvRect(
+          const jsk_recognition_msgs::RectArray::ConstPtr&,
+          std::vector<cv::Rect_<int> >&);
+  };
+
   class DetectionStabilizer: public jsk_topic_tools::DiagnosticNodelet
   {
   public:
@@ -60,6 +92,8 @@ namespace jsk_perception
     jsk_recognition_msgs::RectArray,
     jsk_recognition_msgs::ClassificationResult >SyncPolicy;
     DetectionStabilizer(): DiagnosticNodelet("DetectionStabilizer") {}
+
+    std::vector<MyTracker> trackers;
   protected:
 
     virtual void onInit();
@@ -72,6 +106,10 @@ namespace jsk_perception
 
     bool approximate_sync_;
     int queue_size_;
+    double MIN_NEW_DETECT_INTERSECTION_RATE;
+    int MAX_MISS_FRAME;
+    int max_detect_size_x;
+    int max_detect_size_y;
     boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
     boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > async_;
     message_filters::Subscriber<sensor_msgs::Image> sub_image_;
@@ -83,6 +121,7 @@ namespace jsk_perception
   private:
     
   };
+
 }
 
 #endif

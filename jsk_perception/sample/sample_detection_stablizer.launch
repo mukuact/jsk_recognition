@@ -14,7 +14,7 @@
 
   <node name="stabilizer"
         pkg="nodelet" type="nodelet" 
-        args="load jsk_perception/DetectionStabilizer $(arg MANAGER)">
+        args="load jsk_perception/DetectionStabilizer $(arg MANAGER)"  >
     <remap from="~input" to="/camera/rgb/image_rect_color" />
     <remap from="~input/rect_array" to="/faster_rcnn/rect_array" />
     <remap from="~input/classification" to="/faster_rcnn/output" />
