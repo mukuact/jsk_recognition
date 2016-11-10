@@ -150,7 +150,8 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/slic/slic.cpp)
 endif()
 
 # Build nodelet executables
-include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} slic)
+include_directories(include ${OpenCV_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS}  ${Boost_INCLUDE_DIRS} slic ${libcmt_INCLUDE_DIRS})
+link_directories(${libcmt_LIBRARY_DIRS})
 
 file(GLOB ${PROJECT_NAME}_node_scripts ${PROJECT_SOURCE_DIR}/node_scripts/*)
 foreach(_node_script ${${PROJECT_NAME}_node_scripts})
@@ -248,14 +249,16 @@ add_library(${PROJECT_NAME} SHARED ${jsk_perception_nodelet_sources}
   slic/slic.cpp
   src/histogram_of_oriented_gradients.cpp
   )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${robot_self_filter_LIBRARIES} yaml-cpp)
-if(robot_self_filter_FOUND)
-  include_directories(${robot_self_filter_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} ${robot_self_filter_LIBRARIES})
-endif()
+
 if("${OpenCV_VERSION}" VERSION_GREATER "2.4.8")
   # This condition is to avoid changing current behavior
   target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+endif()
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${robot_self_filter_LIBRARIES} ${libcmt_LIBRARIES} yaml-cpp)
+
+if(robot_self_filter_FOUND)
+  include_directories(${robot_self_filter_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} ${robot_self_filter_LIBRARIES})
 endif()
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_gencpp)
 
@@ -264,7 +267,7 @@ add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_gencpp)
 macro(jsk_add_node _node_cpp _node_exec_name)
   cmake_parse_arguments(ARG "" "" "DEPENDS;LIBRARIES" ${ARGN})
   add_executable(${_node_exec_name} ${_node_cpp})
-  target_link_libraries(${_node_exec_name} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${ARG_LIBRARIES} ${OpenCV_LIBRARIES}) 
+  target_link_libraries(${_node_exec_name} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${ARG_LIBRARIES} ) 
   add_dependencies(${_node_exec_name} ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_gencpp ${ARG_DEPENDS})
   list(APPEND ${PROJECT_NAME}_node_executables ${_node_exec_name})
 endmacro()
