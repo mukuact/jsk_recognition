@@ -34,8 +34,8 @@
  *********************************************************************/
 
 
-#ifndef JSK_PERCEPTION_APPLY_MASK_IMAGE_H_
-#define JSK_PERCEPTION_APPLY_MASK_IMAGE_H_
+#ifndef JSK_PERCEPTION_DETECTION_STABIRIZER_H_
+#define JSK_PERCEPTION_DETECTION_STABIRIZER_H_
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking/tracker.hpp>
@@ -116,7 +116,8 @@ namespace jsk_perception
     message_filters::Subscriber<jsk_recognition_msgs::RectArray> sub_rects_;
     message_filters::Subscriber<jsk_recognition_msgs::ClassificationResult> sub_classification_;
     ros::Publisher pub_image_;
-    ros::Publisher pub_mask_;
+    ros::Publisher pub_array_;
+    ros::Publisher pub_class_;
     
   private:
     

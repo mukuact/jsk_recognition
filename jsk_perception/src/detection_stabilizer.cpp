@@ -58,11 +58,12 @@ namespace jsk_perception
     pnh_->param("max_miss_frame", MAX_MISS_FRAME, 10);
     pnh_->param("min_new_detect_intersection_rate", MIN_NEW_DETECT_INTERSECTION_RATE, 0.5);
     pub_image_ = advertise<sensor_msgs::Image>(
+      *pnh_, "image", 1);
+    pub_array_ = advertise<jsk_recognition_msgs::RectArray>(
+      *pnh_, "rect_array", 1);
+    pub_class_ = advertise<jsk_recognition_msgs::ClassificationResult>(
       *pnh_, "output", 1);
-    pub_mask_ = advertise<sensor_msgs::Image>(
-      *pnh_, "output/mask", 1);
 
-    std::vector<MyTracker> trackers;
     onInitPostProcess();
   }
 
@@ -99,7 +100,7 @@ namespace jsk_perception
   {
     vital_checker_->poke();
 
-    std::vector<cv::Rect> cv_rects(rects_msg->rects.size()); 
+    std::vector<cv::Rect> cv_rects; 
     MyTracker::convertJSKRectArrayToCvRect(rects_msg, cv_rects);
 
     cv::Mat image;
@@ -130,90 +131,26 @@ namespace jsk_perception
       const cv::Rect& tmp_rect = cv_rects[k];
       const std::string& tmp_class = classification->label_names[k];
 
-      ROS_DEBUG_STREAM("now k is " << k);
       bool all_exists = false;
-      for (std::vector<MyTracker>::iterator t_it = trackers.begin(); t_it != trackers.end();){
+      for (std::vector<MyTracker>::iterator t_it = trackers.begin(); t_it != trackers.end();t_it++){
         bool exists = t_it->registerNewDetect(tmp_rect, tmp_class);
         if (exists){
-          all_exists = true; // all_exists might disapper after scope out?
+          all_exists = true; 
           break;
         }
       }
       if(!all_exists){
-        ROS_DEBUG_STREAM("push back now");
-        MyTracker tmp = MyTracker(image, tmp_rect, tmp_class, MAX_MISS_FRAME, MIN_NEW_DETECT_INTERSECTION_RATE, cv::Size(max_detect_size_y, max_detect_size_x));
-        ROS_DEBUG_STREAM("make mytracker");
+        MyTracker tmp(image, tmp_rect, tmp_class, MAX_MISS_FRAME, MIN_NEW_DETECT_INTERSECTION_RATE, cv::Size(max_detect_size_y, max_detect_size_x));
         trackers.push_back(tmp);
       }
     }
-    //cv::Mat mask = cv_bridge::toCvShare(mask_msg, "mono8")->image;
-    //if (image.cols != mask.cols || image.rows != mask.rows) {
-    //  JSK_NODELET_ERROR("size of image and mask is different");
-    //  JSK_NODELET_ERROR("image: %dx%dx", image.cols, image.rows);
-    //  JSK_NODELET_ERROR("mask: %dx%dx", mask.cols, mask.rows);
-    //  return;
-    //}
-    
-    //if (clip_) {
-    //  cv::Rect region = jsk_recognition_utils::boundingRectOfMaskImage(mask);
-    //  mask = mask(region);
-    //  image = image(region);
-    //}
-
-    //pub_mask_.publish(cv_bridge::CvImage(
-    //                    mask_msg->header,
-    //                    "mono8",
-    //                    mask).toImageMsg());
-
-    //cv::Mat masked_image;
-    //image.copyTo(masked_image, mask);
 
     cv::Mat output_image;
     output_image = image;
-    for (std::vector<MyTracker>::iterator t_it = trackers.begin(); t_it != trackers.end();)
+    for (std::vector<MyTracker>::iterator t_it = trackers.begin(); t_it != trackers.end();t_it++)
     {
         t_it->draw(output_image);
     }
-    //if (mask_black_to_transparent_) {
-    //  if (sensor_msgs::image_encodings::isMono(image_msg->encoding)) {
-    //    cv::cvtColor(masked_image, output_image, CV_GRAY2BGRA);
-    //  }
-    //  else if (jsk_recognition_utils::isRGB(image_msg->encoding)) {
-    //    cv::cvtColor(masked_image, output_image, CV_RGB2BGRA);
-    //  }
-    //  else {  // BGR, BGRA or RGBA
-    //    cv::cvtColor(masked_image, output_image, CV_BGR2BGRA);
-    //  }
-    //  for (size_t j=0; j < mask.rows; j++) {
-    //    for (int i=0; i < mask.cols; i++) {
-    //      if (mask.at<uchar>(j, i) == 0) {
-    //        cv::Vec4b color = output_image.at<cv::Vec4b>(j, i);
-    //        color[3] = 0;  // mask black -> transparent
-    //        output_image.at<cv::Vec4b>(j, i) = color;
-    //      }
-    //    }
-    //  }
-    //  // publish bgr8 image
-    //  pub_image_.publish(cv_bridge::CvImage(
-    //        image_msg->header,
-    //        sensor_msgs::image_encodings::BGRA8,
-    //        output_image).toImageMsg());
-    //}
-    //else {
-    //  if (jsk_recognition_utils::isBGRA(image_msg->encoding)) {
-    //    cv::cvtColor(masked_image, output_image, cv::COLOR_BGR2BGRA);
-    //  }
-    //  else if (jsk_recognition_utils::isRGBA(image_msg->encoding)) {
-    //    cv::cvtColor(masked_image, output_image, cv::COLOR_BGR2RGBA);
-    //  }
-    //  else {  // BGR, RGB or GRAY
-    //    masked_image.copyTo(output_image);
-    //  }
-    //  pub_image_.publish(cv_bridge::CvImage(
-    //        image_msg->header,
-    //        image_msg->encoding,
-    //        output_image).toImageMsg());
-    //}
     pub_image_.publish(cv_bridge::CvImage(
                 image_msg->header,
                 image_msg->encoding,
@@ -226,13 +163,9 @@ namespace jsk_perception
         MAX_MISS_FRAME(_max_miss), MIN_NEW_DETECT_INTERSECTION_RATE(_min_inter),
         MAX_DETECT_SIZE(_max_detect)
   {
-    cv_tracker = cv::Tracker::create("BOOSTING"); //  or "MIL"
-    ROS_DEBUG_STREAM("create tracker");
-    ROS_DEBUG_STREAM("empty?" << (_frame.empty() ? "true" :"false"));
+    cv_tracker = cv::Tracker::create("KCF"); //  or "MIL"
     const cv::Mat tmp_mat = _frame.clone();
-    ROS_DEBUG_STREAM("copy");
-    cv_tracker->init(tmp_mat, _rect);
-    ROS_DEBUG_STREAM("done constractor");
+    cv_tracker->init(_frame, _rect);
   }
 
   bool MyTracker::update(const cv::Mat& _frame){
@@ -252,7 +185,7 @@ namespace jsk_perception
 
   void MyTracker::draw(cv::Mat& _image) const{
     cv::rectangle(_image, rect, cv::Scalar(255, 0, 0), 2, 1);
-    cv::putText(_image, cv::format("%03d", id), cv::Point(rect.x + 5, rect.y + 17), 
+    cv::putText(_image, cv::format("%03d:%s", id,obj_class.c_str()), cv::Point(rect.x + 5, rect.y + 17), 
         cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255,0,0), 1, CV_AA);
   }
 
@@ -269,7 +202,7 @@ namespace jsk_perception
       bounding_boxes.push_back(tmp_rect);
     }
   }
-
+  
   int MyTracker::next_id;
 }
 

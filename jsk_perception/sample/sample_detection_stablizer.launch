@@ -6,6 +6,18 @@
         pkg="rosbag" type="play"
         args="$(find jsk_perception)/test_data/2016-10-31-16-54-57.bag --loop" />
 
+  <node name="draw_rect_array"
+        pkg="jsk_perception" type="draw_rect_array.py">
+    <remap from="~input" to="/camera/rgb/image_rect_color" />
+    <remap from="~input/rect_array" to="faster_rcnn/rect_array" />
+    <param name="always_subscribe" value="true" />
+    <rosparam>
+      approximate_sync: True
+      slop: 10
+    </rosparam>
+  </node>
+
+
   <arg name="MANAGER" value="detection_stabilizer_manager" />
   <node name="$(arg MANAGER)"
         pkg="nodelet" type="nodelet"
@@ -19,6 +31,7 @@
     <remap from="~input/rect_array" to="/faster_rcnn/rect_array" />
     <remap from="~input/classification" to="/faster_rcnn/output" />
     <param name="always_subscribe" value="true" />
+    <param name="min_new_detect_intersection_rate" value="0.2" />
   </node>
 
 </launch>
