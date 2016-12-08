@@ -35,7 +35,6 @@
 
 #include <iostream>
 #include <string>
-
 #include <ros/console.h>
 #include "jsk_perception/detection_stabilizer.h"
 #include <boost/assign.hpp>
