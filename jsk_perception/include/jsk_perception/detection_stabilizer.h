@@ -75,6 +75,8 @@ namespace jsk_perception
       // trackerの現在地を_imageに書き込む
       void draw(cv::Mat& _image) const;
 
+      void output(std::vector<jsk_recognition_msgs::Rect>&, std::vector<std::string>&);
+
       static void convertJSKRectArrayToCvRect(
           const jsk_recognition_msgs::RectArray::ConstPtr&,
           std::vector<cv::Rect_<int> >&);

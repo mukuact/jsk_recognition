@@ -34,4 +34,15 @@
     <param name="min_new_detect_intersection_rate" value="0.2" />
   </node>
 
+  <node name="draw_output_rect_array"
+        pkg="jsk_perception" type="draw_rect_array.py">
+    <remap from="~input" to="/camera/rgb/image_rect_color" />
+    <remap from="~input/rect_array" to="stabilizer/output/rect_array" />
+    <param name="always_subscribe" value="true" />
+    <rosparam>
+      approximate_sync: True
+      slop: 10
+    </rosparam>
+  </node>
+
 </launch>

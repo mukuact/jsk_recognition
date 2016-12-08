@@ -58,9 +58,9 @@ namespace jsk_perception
     pnh_->param("max_miss_frame", MAX_MISS_FRAME, 10);
     pnh_->param("min_new_detect_intersection_rate", MIN_NEW_DETECT_INTERSECTION_RATE, 0.5);
     pub_image_ = advertise<sensor_msgs::Image>(
-      *pnh_, "image", 1);
+      *pnh_, "output/image", 1);
     pub_array_ = advertise<jsk_recognition_msgs::RectArray>(
-      *pnh_, "rect_array", 1);
+      *pnh_, "output/rect_array", 1);
     pub_class_ = advertise<jsk_recognition_msgs::ClassificationResult>(
       *pnh_, "output", 1);
 
@@ -145,16 +145,33 @@ namespace jsk_perception
       }
     }
 
+    // output
     cv::Mat output_image;
     output_image = image;
+
+    std::vector<jsk_recognition_msgs::Rect> result_rects;
+    std::vector<std::string> result_classes;
+
     for (std::vector<MyTracker>::iterator t_it = trackers.begin(); t_it != trackers.end();t_it++)
     {
         t_it->draw(output_image);
+        t_it->output(result_rects, result_classes);
     }
+    jsk_recognition_msgs::RectArray new_rects;
+    new_rects.header = rects_msg->header;
+    new_rects.rects = result_rects;
+
+    jsk_recognition_msgs::ClassificationResult new_classificaiton;
+    new_classificaiton.header = classification->header;
+    new_classificaiton.label_names = result_classes;
+
     pub_image_.publish(cv_bridge::CvImage(
                 image_msg->header,
                 image_msg->encoding,
                 output_image).toImageMsg());
+
+    pub_array_.publish(new_rects);
+    pub_class_.publish(new_classificaiton);
   }
 
   // class MyTracker
@@ -187,6 +204,18 @@ namespace jsk_perception
     cv::rectangle(_image, rect, cv::Scalar(255, 0, 0), 2, 1);
     cv::putText(_image, cv::format("%03d:%s", id,obj_class.c_str()), cv::Point(rect.x + 5, rect.y + 17), 
         cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255,0,0), 1, CV_AA);
+  }
+
+  void MyTracker::output(std::vector<jsk_recognition_msgs::Rect>& out_rects, std::vector<std::string>& out_objclass)
+  {
+    jsk_recognition_msgs::Rect tmp_rect;   
+    tmp_rect.x = rect.x;
+    tmp_rect.y = rect.y;
+    tmp_rect.width = rect.width;
+    tmp_rect.height = rect.height;
+
+    out_rects.push_back(tmp_rect);
+    out_objclass.push_back(obj_class);
   }
 
   void MyTracker::convertJSKRectArrayToCvRect(
